@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <vector>
 
 #include "bg_types.hpp"
 #include "building.hpp"

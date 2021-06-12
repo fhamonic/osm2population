@@ -19,6 +19,8 @@ namespace bpo = boost::program_options;
 #include "io/parse_geojson.hpp"
 #include "io/parse_geojson_buildings.hpp"
 #include "io/parse_geojson_population_areas.hpp"
+#include "io/print_geojson_buildings.hpp"
+#include "io/print_svg_buildings.hpp"
 
 #include "chrono.hpp"
 
@@ -82,12 +84,8 @@ int main(int argc, char* argv[]) {
             population_areas.end());
     }
 
-    std::cout << "parse regions in " << chrono.lapTimeMs() << " ms" << std::endl;
+    std::cout << "Parsed Geojson buildings and population areas in " << chrono.lapTimeMs() << " ms" << std::endl;
     
-    std::vector<double> weighted_buildings(buildings.size(), 0.0);
-    
-    std::cout << "raw_regions to regions in " << chrono.lapTimeMs() << " ms" << std::endl;
-
     RTree buildings_rtree(buildings | ba::indexed(0) | ba::transformed([](const auto& e) {
         return std::make_pair(bg::return_envelope<BoxGeo>(e.value().multipolygon), e.index());
     }));
@@ -95,9 +93,44 @@ int main(int argc, char* argv[]) {
         return std::make_pair(bg::return_envelope<BoxGeo>(e.value().multipolygon), e.index());
     }));
 
-    std::cout << "constructed R-tree in " << chrono.lapTimeMs() << " ms" << std::endl;
+    std::cout << "Constructed R-trees in " << chrono.lapTimeMs() << " ms" << std::endl;
 
-    
+    std::for_each(std::execution::par_unseq, population_areas.begin(), population_areas.end(), [&buildings_rtree, &buildings](PopulationArea & pa) {
+        for(const auto & result : buildings_rtree | bgi::adaptors::queried(
+                bgi::intersects(bg::return_envelope<BoxGeo>(pa.multipolygon))
+                && bgi::satisfies([&buildings, &pa](const auto & e) {
+                    return bg::intersects(pa.multipolygon, buildings[e.second].multipolygon);}))) {
+            const Building & b = buildings[result.second];
+            MultipolygonGeo intersection;
+            bg::intersection(pa.multipolygon, b.multipolygon, intersection);
+            pa.buldingAreaSum += bg::area(intersection);
+        }
+    });
+
+    std::cout << "Computed population areas buldingAreaSum in " << chrono.lapTimeMs() << " ms" << std::endl;
+
+    std::for_each(std::execution::par_unseq, buildings.begin(), buildings.end(), [&population_areas_rtree, &population_areas](Building & b) {
+        double coveredArea = 0.0;
+        for(const auto & result : population_areas_rtree | bgi::adaptors::queried(
+                bgi::intersects(bg::return_envelope<BoxGeo>(b.multipolygon))
+                && bgi::satisfies([&population_areas, &b](const auto & e) {
+                    return bg::intersects(b.multipolygon, population_areas[e.second].multipolygon);}))) {
+            const PopulationArea & pa = population_areas[result.second];
+            MultipolygonGeo intersection;
+            bg::intersection(b.multipolygon, pa.multipolygon, intersection);
+            const double intersection_area = bg::area(intersection);
+            b.population += (intersection_area / pa.buldingAreaSum) * pa.population;
+            coveredArea += intersection_area;
+        }
+        b.population *= bg::area(b.multipolygon) / coveredArea;
+    });
+
+    std::cout << "Computed buildings population in " << chrono.lapTimeMs() << " ms" << std::endl;
+
+    IO::print_geojson_buildings(buildings, output_file);
+
+    if(generate_svg)
+        IO::print_svg_buildings(buildings, output_file.replace_extension("svg"));
     
     return EXIT_SUCCESS;
 }

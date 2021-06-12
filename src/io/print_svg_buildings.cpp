@@ -5,7 +5,7 @@ namespace bg = boost::geometry;
 namespace ba = boost::adaptors;
 
 namespace IO {
-    void print_buildings_svg(const std::vector<Building> & buildings, const std::filesystem::path & svg_file) {
+    void print_svg_buildings(const std::vector<Building> & buildings, const std::filesystem::path & svg_file) {
         std::ofstream svg(svg_file);
         bg::svg_mapper<PointGeo> mapper(svg, 1500, 1500);
 
