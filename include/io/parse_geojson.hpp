@@ -5,10 +5,8 @@
 #include <iostream>
 
 #include "bg_types.hpp"
-#include "region.hpp"
+#include <boost/geometry.hpp>
 
-#include <boost/range/algorithm.hpp>
-#include <boost/range/adaptors.hpp>
 #include <simdjson.h>
 
 
@@ -69,11 +67,13 @@ namespace IO {
                 prop.emplace_back(p.unescaped_key().value(), p.value().get_string().value());
             return prop;
         }
-    } // namespace detail
-}
 
-namespace IO {
-    std::vector<Region> parse_geojson(const std::filesystem::path & json_file);
-    MultipolygonGeo parse_geojson_multipolygon(const std::filesystem::path & json_file);
+        inline simdjson::ondemand::object open_geojson(const std::filesystem::path & json_file) {
+            simdjson::ondemand::parser parser;
+            auto json = simdjson::padded_string::load(json_file);
+            simdjson::ondemand::document doc = parser.iterate(json);
+            return doc.get_object();
+        }
+    } // namespace detail
 }
 #endif // PARSE_GEOJSON_HPP

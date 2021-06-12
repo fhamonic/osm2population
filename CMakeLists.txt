@@ -21,8 +21,11 @@ option(COMPILE_WITH_LTO "" OFF)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
-add_executable(osm2population src/io/parse_geojson.cpp
-                        src/osm2population.cpp)
+add_executable(osm2population src/io/parse_geojson_buildings.cpp
+                            src/io/parse_geojson_population_areas.cpp
+                            src/io/print_geojson_buildings.cpp
+                            src/io/print_svg_buildings.cpp
+                            src/osm2population.cpp)
 target_include_directories(osm2population PRIVATE include)
 target_link_libraries(osm2population CONAN_PKG::boost)
 target_link_libraries(osm2population CONAN_PKG::tbb)

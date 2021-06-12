@@ -16,23 +16,11 @@ namespace ba = boost::adaptors;
 #include <boost/program_options.hpp>
 namespace bpo = boost::program_options;
 
-#include "region.hpp"
 #include "io/parse_geojson.hpp"
+#include "io/parse_geojson_buildings.hpp"
+#include "io/parse_geojson_population_areas.hpp"
 
 #include "chrono.hpp"
-
-struct RegionInfos {
-    double qualityCoef;
-    double probConnectionPerMeter;
-    int overrideLevel;
-
-    public:
-        RegionInfos() = default;
-        RegionInfos(double qualityCoef, double probConnectionPerMeter, int overrideLevel)
-            : qualityCoef(qualityCoef)
-            , probConnectionPerMeter(probConnectionPerMeter)
-            , overrideLevel(overrideLevel) {}
-};
 
 static bool process_command_line(int argc, char* argv[], 
     std::filesystem::path & buildings_file, std::filesystem::path & population_file, std::filesystem::path & output_file, std::filesystem::path & area_file,
@@ -65,6 +53,8 @@ static bool process_command_line(int argc, char* argv[],
     return true;
 }
 
+using RTree = bgi::rtree<std::pair<BoxGeo,size_t>, bgi::rstar<16,4>>;
+
 int main(int argc, char* argv[]) {
     std::filesystem::path buildings_file;
     std::filesystem::path population_file;
@@ -79,16 +69,16 @@ int main(int argc, char* argv[]) {
 
     Chrono chrono;
 
-    std::vector<Region> buildings = IO::parse_geojson(buildings_file);
-    std::vector<Region> population_areas = IO::parse_geojson(population_file);
+    std::vector<Building> buildings = IO::parse_geojson_buildings(buildings_file);
+    std::vector<PopulationArea> population_areas = IO::parse_geojson_population_areas(population_file);
 
     if(area_provided) {
-        MultipolygonGeo search_area = IO::parse_geojson_multipolygon(area_file);
+        MultipolygonGeo search_area = IO::detail::parse_geojson_multipolygon<MultipolygonGeo>(IO::detail::open_geojson(area_file)["coordinates"]);
         buildings.erase(
-            std::remove_if(buildings.begin(), buildings.end(), [&search_area](auto & r) { return !bg::intersects(search_area, r.multipolygon); }),
+            std::remove_if(buildings.begin(), buildings.end(), [&search_area](auto & b) { return !bg::intersects(search_area, b.multipolygon); }),
             buildings.end());
         population_areas.erase(
-            std::remove_if(population_areas.begin(), population_areas.end(), [&search_area](auto & r) { return !bg::intersects(search_area, r.multipolygon); }),
+            std::remove_if(population_areas.begin(), population_areas.end(), [&search_area](auto & p) { return !bg::intersects(search_area, p.multipolygon); }),
             population_areas.end());
     }
 
@@ -98,9 +88,11 @@ int main(int argc, char* argv[]) {
     
     std::cout << "raw_regions to regions in " << chrono.lapTimeMs() << " ms" << std::endl;
 
-    using RTree = bgi::rtree<std::pair<BoxGeo,size_t>, bgi::rstar<16,4>>;
-    RTree rtree(regions | ba::indexed(0) | ba::transformed([](const auto& e) {
-        return std::make_pair(bg::return_envelope<BoxGeo>(e.value().first), e.index());
+    RTree buildings_rtree(buildings | ba::indexed(0) | ba::transformed([](const auto& e) {
+        return std::make_pair(bg::return_envelope<BoxGeo>(e.value().multipolygon), e.index());
+    }));
+    RTree population_areas_rtree(population_areas | ba::indexed(0) | ba::transformed([](const auto& e) {
+        return std::make_pair(bg::return_envelope<BoxGeo>(e.value().multipolygon), e.index());
     }));
 
     std::cout << "constructed R-tree in " << chrono.lapTimeMs() << " ms" << std::endl;
