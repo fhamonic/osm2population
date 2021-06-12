@@ -129,8 +129,12 @@ int main(int argc, char* argv[]) {
 
     IO::print_geojson_buildings(buildings, output_file);
 
-    if(generate_svg)
+    std::cout << "Printed geojson buildings in " << chrono.lapTimeMs() << " ms" << std::endl;
+
+    if(generate_svg) {
         IO::print_svg_buildings(buildings, output_file.replace_extension("svg"));
-    
+        std::cout << "Printed svg buildings in " << chrono.lapTimeMs() << " ms" << std::endl;
+    }
+
     return EXIT_SUCCESS;
 }
