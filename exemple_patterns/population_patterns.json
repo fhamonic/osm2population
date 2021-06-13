@@ -1,0 +1,11 @@
+{
+    "nodePatterns" : [],
+    "wayPatterns" : [],
+    "areaPatterns" : [
+        {
+            "matchPropertiesValue" : { "boundary" : "administrative", "place" : "quarter" },
+            "requireProperties" : [ "population" ],
+            "forwardProperties" : [ "population" ]
+        }
+    ]
+}
