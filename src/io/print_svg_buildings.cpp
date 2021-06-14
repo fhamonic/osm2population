@@ -9,12 +9,12 @@ namespace IO {
         std::ofstream svg(svg_file);
         bg::svg_mapper<PointGeo> mapper(svg, 1500, 1500);
 
-        double max_population = *boost::max_element(buildings | ba::transformed([](auto & b){ return b.population; }));
+        double max_population_density = *boost::max_element(buildings | ba::transformed([](auto & b){ return b.population / b.area; }));
 
         for(auto & b : buildings)
             mapper.add(b.multipolygon);
         for(auto & b : buildings) {
-            int red =  b.population / max_population * 255;
+            int red =  (b.population / b.area) / max_population_density * 255;
             mapper.map(b.multipolygon, "fill-opacity:0.5;fill:rgb(" + std::to_string(red) + ",0,0);stroke:rgb(0,0,0);stroke-width:0");
         }
     }

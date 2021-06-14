@@ -4,7 +4,6 @@
 #include <filesystem>
 #include <iostream>
 
-#include "bg_types.hpp"
 #include <boost/geometry.hpp>
 
 #include <simdjson.h>

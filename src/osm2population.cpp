@@ -34,7 +34,7 @@ static bool process_command_line(int argc, char* argv[],
             ("help,h", "produce help message")
             ("buildings,b", bpo::value<std::filesystem::path>(&buildings_file)->required(), "geojson feature collection file describing buildings")
             ("population,p", bpo::value<std::filesystem::path>(&population_file)->required(), "geojson feature collection file describing population areas")
-            ("output,o", bpo::value<std::filesystem::path>(&output_file), "set the output geojson file path")
+            ("output,o", bpo::value<std::filesystem::path>(&output_file), "geojson output file path")
             ("area,a", bpo::value<std::filesystem::path>(&area_file), "geojson multipolygon file describing the area of interest")
             ("svg", "generate the svg file of the result")
         ;
@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
             coveredArea += intersection_area;
         }
         b.population *= coveredArea != 0
-                    ? bg::area(b.multipolygon) / coveredArea
+                    ? b.area / coveredArea
                     : 1;
     });
 
