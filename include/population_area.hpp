@@ -9,6 +9,12 @@ struct PopulationArea {
     double buldingAreaSum;
 
     template <typename Multipolygon>
+    PopulationArea(Multipolygon&& multipolygon)
+        : multipolygon(std::forward<Multipolygon>(multipolygon))
+        , population(0.0)
+        , buldingAreaSum(0.0) {}
+
+    template <typename Multipolygon>
     PopulationArea(Multipolygon&& multipolygon, double population)
         : multipolygon(std::forward<Multipolygon>(multipolygon))
         , population(population)

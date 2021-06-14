@@ -67,13 +67,6 @@ namespace IO {
                 prop.emplace_back(p.unescaped_key().value(), p.value().get_string().value());
             return prop;
         }
-
-        inline simdjson::ondemand::object open_geojson(const std::filesystem::path & json_file) {
-            simdjson::ondemand::parser parser;
-            auto json = simdjson::padded_string::load(json_file);
-            simdjson::ondemand::document doc = parser.iterate(json);
-            return doc.get_object();
-        }
     } // namespace detail
 }
 #endif // PARSE_GEOJSON_HPP

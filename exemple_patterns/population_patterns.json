@@ -3,7 +3,7 @@
     "wayPatterns" : [],
     "areaPatterns" : [
         {
-            "matchPropertiesValue" : { "boundary" : "administrative", "place" : "quarter" },
+            "matchPropertiesValues" : { "admin_level" : "10", "boundary" : "administrative", "place" : "quarter" },
             "requireProperties" : [ "population" ],
             "forwardProperties" : [ "population" ]
         }

@@ -19,6 +19,7 @@ namespace bpo = boost::program_options;
 #include "io/parse_geojson.hpp"
 #include "io/parse_geojson_buildings.hpp"
 #include "io/parse_geojson_population_areas.hpp"
+#include "io/parse_geojson_search_area.hpp"
 #include "io/print_geojson_buildings.hpp"
 #include "io/print_svg_buildings.hpp"
 
@@ -75,7 +76,7 @@ int main(int argc, char* argv[]) {
     std::vector<PopulationArea> population_areas = IO::parse_geojson_population_areas(population_file);
 
     if(area_provided) {
-        MultipolygonGeo search_area = IO::detail::parse_geojson_multipolygon<MultipolygonGeo>(IO::detail::open_geojson(area_file)["coordinates"]);
+        MultipolygonGeo search_area = IO::parse_geojson_search_area<MultipolygonGeo>(area_file);
         buildings.erase(
             std::remove_if(buildings.begin(), buildings.end(), [&search_area](auto & b) { return !bg::intersects(search_area, b.multipolygon); }),
             buildings.end());
@@ -86,6 +87,18 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Parsed Geojson buildings and population areas in " << chrono.lapTimeMs() << " ms" << std::endl;
     
+
+
+    std::cout << "Datas resume:"<< std::endl;
+    std::cout << "\t" << buildings.size() << " buildings"<< std::endl;
+    std::cout << "\t" << population_areas.size() << " population areas"<< std::endl;
+    double sum_population = 0;
+    for(const PopulationArea & pa : population_areas)
+        sum_population += pa.population;
+    std::cout << "\tpopulation = " << sum_population << std::endl;
+
+
+
     RTree buildings_rtree(buildings | ba::indexed(0) | ba::transformed([](const auto& e) {
         return std::make_pair(bg::return_envelope<BoxGeo>(e.value().multipolygon), e.index());
     }));
@@ -119,22 +132,39 @@ int main(int argc, char* argv[]) {
             MultipolygonGeo intersection;
             bg::intersection(b.multipolygon, pa.multipolygon, intersection);
             const double intersection_area = bg::area(intersection);
-            b.population += (intersection_area / pa.buldingAreaSum) * pa.population;
+            b.population += pa.buldingAreaSum != 0.0
+                        ? (intersection_area / pa.buldingAreaSum) * pa.population
+                        : 0;
             coveredArea += intersection_area;
         }
-        b.population *= bg::area(b.multipolygon) / coveredArea;
+        b.population *= coveredArea != 0
+                    ? bg::area(b.multipolygon) / coveredArea
+                    : 1;
     });
 
     std::cout << "Computed buildings population in " << chrono.lapTimeMs() << " ms" << std::endl;
 
+    auto new_end_it = std::remove_if(buildings.begin(), buildings.end(), [](const Building & b) { return b.population == 0; });
+    if(new_end_it != buildings.end()) {
+        std::cout << std::distance(new_end_it, buildings.end()) << " buildings are not in population areas and will be discarded" << std::endl;
+        buildings.erase(new_end_it, buildings.end());
+    }
+
+
+
     IO::print_geojson_buildings(buildings, output_file);
 
-    std::cout << "Printed geojson buildings in " << chrono.lapTimeMs() << " ms" << std::endl;
+    std::cout << "Printed Geojson weighted buildings in " << chrono.lapTimeMs() << " ms" << std::endl;
 
     if(generate_svg) {
         IO::print_svg_buildings(buildings, output_file.replace_extension("svg"));
-        std::cout << "Printed svg buildings in " << chrono.lapTimeMs() << " ms" << std::endl;
+        std::cout << "Printed SVG buildings in " << chrono.lapTimeMs() << " ms" << std::endl;
     }
+
+    sum_population = 0;
+    for(const Building & b : buildings)
+        sum_population += b.population;
+    std::cout << "\tpopulation = " << sum_population << std::endl;
 
     return EXIT_SUCCESS;
 }
