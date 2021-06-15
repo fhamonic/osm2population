@@ -8,7 +8,7 @@ Program to compute the distribution of population within an area based on OSM ex
 
 ## Requirements
 
-This project uses CMake (https://cmake.org/) and Conan (https://conan.io/index.html).
+This project requires CMake (https://cmake.org/) and Conan (https://conan.io/index.html) installed.
 
 ## How to compile
 
